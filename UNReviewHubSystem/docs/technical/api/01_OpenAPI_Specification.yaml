@@ -821,6 +821,20 @@ paths:
                 $ref: '#/components/schemas/Error'
 
 # Tags
+  - name: users
+    description: User management and profiles
+  - name: assignments
+    description: Review assignment and routing
+  - name: queues
+    description: Queue management and configuration
+  - name: exports
+    description: Data export and ML pipelines
+  - name: escalations
+    description: Escalation management
+  - name: audit
+    description: Audit logging and compliance
+  - name: analytics
+    description: Analytics and reporting
 tags:
   - name: system
     description: System health and status endpoints
