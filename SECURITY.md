@@ -15,8 +15,8 @@ Only the latest version of UNReviewHub is currently supported for security updat
 
 If you discover a security vulnerability, please report it immediately via the following channels:
 
-1. **Email**: security@un.org
-2. **Project Sponsor**: Contact the UN OICT project lead directly.
+1. **Email**: security@unsublog.io (Placeholder)
+2. **Project Lead**: Contact Unsub_Log directly.
 
 Please include as much detail as possible, including:
 - Type of vulnerability.

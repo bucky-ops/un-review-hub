@@ -1,13 +1,13 @@
 openapi: 3.0.3
 info:
-  title: UNReviewHub API
-  description: Federated Human-in-the-Loop Review Platform for UN Agencies.
+  title: ReviewHub API
+  description: Federated Human-in-the-Loop Review Platform.
   version: 1.0.0
   contact:
-    name: UN OICT Support
-    email: support@un.org
+    name: ReviewHub Support
+    email: support@unsublog.io
 servers:
-  - url: https://api.unreviewhub.un.org/v1
+  - url: https://api.reviewhub.io/v1
     description: Production Server
   - url: http://localhost:3000/v1
     description: Local Development Server

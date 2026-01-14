@@ -1,7 +1,7 @@
 {
-  "name": "@unreviewhub/api",
+  "name": "@unsublog/reviewhub-api",
   "version": "1.0.0",
-  "description": "UNReviewHub API Services - Backend microservices for human-in-the-loop review platform",
+  "description": "ReviewHub API Services - Backend microservices for human-in-the-loop review platform",
   "main": "src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",

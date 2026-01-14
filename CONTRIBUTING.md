@@ -26,5 +26,5 @@ We welcome feature suggestions! Please open an issue and describe the problem yo
 - **API**: All new endpoints must be documented in the OpenAPI spec.
 - **Security**: Never commit secrets or PII. Use `.env.example` for configuration.
 
-## UN Compliance
-All contributions must adhere to UN data protection and security standards. High-impact changes may require a Security Review before merging.
+## Compliance & Standards
+All contributions must adhere to high data protection and security standards. High-impact changes may require a thorough security review before merging.

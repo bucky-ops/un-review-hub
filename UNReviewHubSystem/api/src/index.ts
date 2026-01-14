@@ -41,12 +41,12 @@ server.register(rateLimit, {
 server.register(swagger, {
   openapi: {
     info: {
-      title: 'UNReviewHub API',
+      title: 'ReviewHub API',
       description: 'Human-in-the-Loop Review Platform API',
       version: '1.0.0',
       contact: {
-        name: 'UN OICT Support',
-        email: 'support@un.org',
+        name: 'ReviewHub Support',
+        email: 'support@unsublog.io',
       },
     },
     servers: [
@@ -78,10 +78,9 @@ server.get('/health', async (request, reply) => {
   };
 });
 
-// Basic API routes (will be expanded)
 server.get('/api/v1/status', async (request, reply) => {
   return {
-    service: 'UNReviewHub API',
+    service: 'ReviewHub API',
     status: 'operational',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
@@ -93,9 +92,9 @@ const start = async () => {
   try {
     const port = parseInt(process.env.PORT || '3000', 10);
     const host = process.env.HOST || '0.0.0.0';
-    
+
     await server.listen({ port, host });
-    console.log(`🚀 UNReviewHub API ready at http://${host}:${port}`);
+    console.log(`🚀 ReviewHub API ready at http://${host}:${port}`);
     console.log(`📚 API Documentation: http://${host}:${port}/docs`);
   } catch (error) {
     console.error('Error starting server:', error);

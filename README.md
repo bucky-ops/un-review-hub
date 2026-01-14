@@ -1,12 +1,12 @@
-# UNReviewHub - Federated Human-in-the-Loop Review Platform
+# ReviewHub - Federated Human-in-the-Loop Review Platform
 
 ## Project Overview
 
-UNReviewHub is a secure, auditable, federated Human-in-the-Loop (HITL) management platform designed for UN agencies. The platform routes items (model outputs, flagged cases) to human reviewers, captures decisions and rationales, provides QA/escalation workflows, and exports structured feedback to ML pipelines.
+ReviewHub is a secure, auditable, federated Human-in-the-Loop (HITL) management platform. The platform routes items (model outputs, flagged cases) to human reviewers, captures decisions and rationales, provides QA/escalation workflows, and exports structured feedback to ML pipelines.
 
-**Sponsor**: UN OICT / Steering Group  
+**Author**: Unsub_Log  
 **Target Scale**: 1,000 items/day, 200 concurrent reviewers (pilot)  
-**Hosting Model**: UN-managed private cloud / UN-approved public cloud (hybrid)
+**Hosting Model**: Private cloud / Public cloud (hybrid)
 
 ## 🏗️ Project Structure
 
@@ -74,10 +74,10 @@ cd web && npm run dev
 
 ## 📋 Key Features
 
-- ✅ **UN SSO Integration** (SAML/OIDC) with role-based access control
-- ✅ **Per-Agency Data Partitioning** with configurable data residency rules
+- ✅ **SSO Integration** (SAML/OIDC) with role-based access control
+- ✅ **Per-Organization Data Partitioning** with configurable data residency rules
 - ✅ **Immutable Audit Logging** with tamper-evidence for all decisions
-- ✅ **Built-in PII Redaction** tools supporting DPIA requirements
+- ✅ **Built-in PII Redaction** tools supporting compliance requirements
 - ✅ **Skill-Based Routing** with language matching and load balancing
 - ✅ **Reviewer Workspace** with decision controls and history tracking
 - ✅ **QA Workflows** with sampling engine and disagreement resolution
@@ -86,12 +86,12 @@ cd web && npm run dev
 
 ## 🔒 Security & Compliance
 
-- **Authentication**: UN SSO integration with MFA for privileged roles
+- **Authentication**: SSO integration with MFA for privileged roles
 - **Authorization**: Role-based access control (Admin, Reviewer, QA)
 - **Data Protection**: AES-256 encryption at rest, TLS 1.2+ in transit
 - **Audit Trail**: Immutable logging of all decisions and data changes
 - **PII Protection**: Built-in redaction tools with configurable rules
-- **Data Residency**: Per-agency partitioning with configurable policies
+- **Data Residency**: Per-organization partitioning with configurable policies
 
 ## 🏗️ Architecture Highlights
 
@@ -142,22 +142,16 @@ Infrastructure     → Monitoring, Logging, Secrets, Backup systems
   - ⏳ Data Residency Framework (Pending)
 
 ### Next Immediate Steps
-1. Implement **UN SSO** OAuth2 callback handler.
+1. Implement **SSO** OAuth2 callback handler.
 2. Develop **Review Dashboard** front-end components.
 3. Finalize **Pii Redaction** logic in the Review Service.
 4. Set up **Terraform** for pilot cloud deployment.
 
 ## 👥 Team & Roles
 
-- **Product Manager**: UN liaison for policy/compliance
-- **Tech Lead/Architect**: Platform architecture and design
-- **Backend Engineers**: API, database, routing (2)
-- **Frontend Engineers**: React UI implementation (2)
-- **DevOps Engineer**: IaC, CI/CD, observability (1)
-- **Security Engineer**: Threat modeling, security testing (1)
-- **QA Engineer**: Testing, accessibility (1)
-- **Data/ML Engineer**: Export pipelines, integration (1)
-- **UX/Designer**: Reviewer workflows (1)
+- **Author/Project Manager**: Unsub_Log
+- **Lead Architect**: Unsub_Log
+- **Backend/Frontend Support**: Community Contributors
 
 ## 📚 Documentation
 
@@ -200,12 +194,10 @@ npm run infra:deploy
 
 - 📖 **Documentation**: See `/docs` directory
 - 🔧 **Technical Issues**: Create GitHub issue
-- 📧 **UN Process Questions**: Contact project sponsor
-- 🚨 **Security Concerns**: Contact security team immediately
 
 ## 📜 License & Copyright
 
-© United Nations 2025. All rights reserved.
+© Unsub_Log 2025. All rights reserved.
 
 ---
 
