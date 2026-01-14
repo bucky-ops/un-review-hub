@@ -1,0 +1,348 @@
+// This is your Prisma schema file,
+// learn more about it in docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  REVIEWER
+  QA
+  DATA_SCIENTIST
+  SYSTEM_OPERATOR
+}
+
+enum ContentType {
+  DOCUMENT
+  IMAGE
+  TEXT
+  AUDIO
+  VIDEO
+  MIXED
+}
+
+enum ItemStatus {
+  PENDING
+  ASSIGNED
+  IN_REVIEW
+  COMPLETED
+  ESCALATED
+  ARCHIVED
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  URGENT
+}
+
+enum DecisionType {
+  APPROVE
+  REJECT
+  ESCALATE
+  REQUEST_INFO
+  SKIP
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  ACCEPTED
+  COMPLETED
+  SKIPPED
+  ESCALATED
+  EXPIRED
+}
+
+enum QAStatus {
+  PENDING
+  IN_REVIEW
+  COMPLETED
+  DISAGREEMENT
+  ESCALATED
+}
+
+enum EscalationLevel {
+  LEVEL_1
+  LEVEL_2
+  LEVEL_3
+}
+
+enum AuditOperation {
+  INSERT
+  UPDATE
+  DELETE
+  DECISION
+  ESCALATION
+  EXPORT
+  LOGIN
+  LOGOUT
+}
+
+// Core Models
+model Organization {
+  id                    String     @id @default(cuid())
+  name                  String
+  shortName             String     @unique
+  countryCode           String
+  agencyType            String
+  dataResidencyRules     Json       @default("{}")
+  retentionPolicy       Json       @default("{}")
+  securityConfig        Json       @default("{}")
+  isActive             Boolean    @default(true)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  @@map("organizations")
+}
+
+model UserProfile {
+  id               String    @id @default(cuid())
+  organizationId    String
+  unSsoId          String    @unique
+  email             String
+  displayName       String
+  role              UserRole
+  skills            Json      @default("[]")
+  languages         Json      @default("[]")
+  preferences       Json      @default("{}")
+  isActive          Boolean   @default(true)
+  lastLoginAt       DateTime?
+  mfaEnabled       Boolean   @default(false)
+  mfaVerified      Boolean   @default(false)
+  mfaEnforced      Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("user_profiles")
+}
+
+model ReviewItem {
+  id                     String        @id @default(cuid())
+  organizationId          String
+  externalId              String?
+  duplicateOfId           String?    // Link to original item if this is a duplicate
+  contentType             ContentType
+  title                  String?
+  content                Json
+  metadata               Json          @default("{}")
+  priority               PriorityLevel  @default(MEDIUM)
+  requiredSkills          Json          @default("[]")
+  requiredLanguages       Json          @default("[]")
+  estimatedDurationMinutes Int?
+  slaDeadline            DateTime?
+  status                 ItemStatus     @default(PENDING)
+  assignedTo             String?
+  assignedAt             DateTime?
+  startedAt              DateTime?
+  completedAt            DateTime?
+  createdBy              String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@index([status, priority])
+  @@index([organizationId, status])
+  @@index([assignedTo])
+  @@index([slaDeadline])
+  @@index([createdAt(sort: Desc)])
+  @@index([duplicateOfId])
+  @@map("review_items")
+}
+
+model ItemAttachment {
+  id             String         @id @default(cuid())
+  reviewItemId    String
+  filename       String
+  filePath       String
+  fileSizeBytes  BigInt
+  mimeType       String
+  attachmentType String
+  isProcessed    Boolean        @default(false)
+  processedData  Json?
+  uploadedBy     String
+  createdAt      DateTime       @default(now())
+
+  @@index([reviewItemId])
+  @@map("item_attachments")
+}
+
+model Decision {
+  id                    String       @id @default(cuid())
+  reviewItemId           String
+  reviewerId             String
+  decisionType           DecisionType
+  rationale              String
+  confidenceScore        Int?
+  piiRedactions          Json         @default("[]")
+  tags                  Json         @default("[]")
+  metadata               Json         @default("{}")
+  reviewDurationSeconds   Int?
+  isLatest              Boolean      @default(true)
+  createdAt              DateTime     @default(now())
+
+  @@unique([reviewItemId, isLatest])
+  @@index([reviewItemId, createdAt(sort: Desc)])
+  @@index([reviewerId, isLatest])
+  @@index([decisionType])
+  @@index([createdAt(sort: Desc)])
+  @@map("decisions")
+}
+
+model ReviewQueue {
+  id                        String   @id @default(cuid())
+  organizationId            String
+  name                      String
+  description               String?
+  routingRules              Json     @default("{}")
+  slaConfig                 Json     @default("{}")
+  autoAssignment            Boolean  @default(true)
+  maxQueueSize              Int      @default(100)
+  processingTimeTargetMinutes Int      @default(60)
+  isActive                 Boolean  @default(true)
+  createdBy                 String
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([organizationId, isActive])
+  @@map("review_queues")
+}
+
+model QueueAssignment {
+  id               String           @id @default(cuid())
+  reviewItemId      String
+  queueId          String
+  assignedTo       String
+  assignedBy       String?
+  assignedAt       DateTime         @default(now())
+  acceptedAt       DateTime?
+  completedAt      DateTime?
+  expiresAt        DateTime?
+  status           AssignmentStatus  @default(ASSIGNED)
+  assignmentMetadata Json             @default("{}")
+
+  @@index([queueId, status])
+  @@index([assignedTo, status])
+  @@index([reviewItemId])
+  @@index([expiresAt])
+  @@map("queue_assignments")
+}
+
+model QAReview {
+  id                  String    @id @default(cuid())
+  originalDecisionId    String
+  qaReviewerId         String
+  reviewItemId         String
+  consensusGroupId     String?  // For many-to-one consensus reviews
+  agreementScore       Int?
+  feedback            String?
+  discrepancyReason    String?
+  recommendedAction    String?
+  status              QAStatus  @default(PENDING)
+  reviewDurationSeconds Int?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([originalDecisionId])
+  @@index([qaReviewerId, status])
+  @@index([reviewItemId])
+  @@index([status])
+  @@index([consensusGroupId])
+  @@map("qa_reviews")
+}
+
+model SamplingPlan {
+  id            String  @id @default(cuid())
+  organizationId String
+  name          String
+  strategy      String
+  samplingRate  Decimal @db.Decimal(5, 4)
+  strataRules   Json    @default("{}")
+  riskFactors   Json    @default("{}")
+  timeRules     Json    @default("{}")
+  isActive      Boolean @default(true)
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([organizationId, isActive])
+  @@map("sampling_plans")
+}
+
+model Escalation {
+  id              String          @id @default(cuid())
+  reviewItemId     String
+  escalatedBy     String
+  escalationReason String
+  escalationLevel EscalationLevel @default(LEVEL_1)
+  assignedTo      String?
+  status          String          @default("pending")
+  resolution      String?
+  resolutionSummary String?
+  escalatedAt     DateTime        @default(now())
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  metadata        Json            @default("{}")
+
+  @@index([reviewItemId])
+  @@index([status])
+  @@index([escalationLevel])
+  @@index([assignedTo, status])
+  @@map("escalations")
+}
+
+model ExportJob {
+  id              String   @id @default(cuid())
+  organizationId  String
+  requestedBy     String
+  exportName      String
+  description     String?
+  exportFormat    String
+  filters         Json     @default("{}")
+  filePath        String?
+  fileSizeBytes   BigInt?
+  recordCount     BigInt?
+  status          String   @default("pending")
+  errorMessage    String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, status])
+  @@index([requestedBy])
+  @@index([createdAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("export_jobs")
+}
+
+model AuditEntry {
+  id            String          @id @default(cuid())
+  tableName     String
+  recordId      String?
+  operation     AuditOperation
+  oldValues     Json?
+  newValues     Json?
+  changedFields String[]
+  userId        String?
+  organizationId String?
+  ipAddress     String?
+  userAgent     String?
+  sessionId     String?
+  hashValue     String?
+  createdAt     DateTime        @default(now())
+
+  @@index([tableName, recordId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([operation, createdAt(sort: Desc)])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_entries")
+}

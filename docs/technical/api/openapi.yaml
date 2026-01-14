@@ -1,0 +1,157 @@
+openapi: 3.0.3
+info:
+  title: UNReviewHub API
+  description: Federated Human-in-the-Loop Review Platform for UN Agencies.
+  version: 1.0.0
+  contact:
+    name: UN OICT Support
+    email: support@un.org
+servers:
+  - url: https://api.unreviewhub.un.org/v1
+    description: Production Server
+  - url: http://localhost:3000/v1
+    description: Local Development Server
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: Login via UN SSO
+      responses:
+        200:
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+
+  /reviews/items:
+    get:
+      tags:
+        - reviews
+      summary: List review items
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, ASSIGNED, IN_REVIEW, COMPLETED]
+      responses:
+        200:
+          description: List of items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReviewItem'
+    post:
+      tags:
+        - reviews
+      summary: Create a new review item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewItemCreate'
+      responses:
+        201:
+          description: Item created
+
+  /reviews/items/{id}/decision:
+    post:
+      tags:
+        - reviews
+      summary: Submit a decision for an item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Decision'
+      responses:
+        200:
+          description: Decision recorded
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [ADMIN, REVIEWER, QA, DATA_SCIENTIST, SYSTEM_OPERATOR]
+        mfaEnabled:
+          type: boolean
+
+    ReviewItem:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        content:
+          type: object
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL, URGENT]
+        status:
+          type: string
+
+    ReviewItemCreate:
+      type: object
+      required:
+        - contentType
+        - content
+      properties:
+        title:
+          type: string
+        contentType:
+          type: string
+        content:
+          type: object
+        priority:
+          type: string
+        metadata:
+          type: object
+
+    Decision:
+      type: object
+      required:
+        - decisionType
+        - rationale
+      properties:
+        decisionType:
+          type: string
+          enum: [APPROVE, REJECT, ESCALATE, REQUEST_INFO, SKIP]
+        rationale:
+          type: string
+          minLength: 10
+        confidenceScore:
+          type: integer
+          minimum: 1
+          maximum: 5
+        piiRedactions:
+          type: array
+          items:
+            type: object

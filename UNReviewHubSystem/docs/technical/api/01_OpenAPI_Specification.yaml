@@ -1,0 +1,836 @@
+openapi: 3.0.3
+info:
+  title: UNReviewHub API
+  description: |
+    UNReviewHub is a secure, auditable, federated Human-in-the-Loop (HITL) management platform designed for UN agencies.
+    
+    The platform routes items (model outputs, flagged cases) to human reviewers, captures decisions and rationales, 
+    provides QA/escalation workflows, and exports structured feedback to ML pipelines.
+    
+    ## Authentication
+    
+    This API uses UN SSO for authentication. Include your JWT token in the Authorization header:
+    
+    ```
+    Authorization: Bearer <your-jwt-token>
+    ```
+    
+    ## Rate Limiting
+    
+    The API implements rate limiting to ensure fair usage:
+    - 100 requests per minute per authenticated user
+    - Higher limits available for service accounts
+    
+    ## Pagination
+    
+    List endpoints support pagination with these parameters:
+    - `page`: Page number (default: 1)
+    - `limit`: Items per page (default: 20, max: 100)
+    - `sort`: Sort field and direction (e.g., "createdAt:desc")
+    
+    ## Error Handling
+    
+    The API uses standard HTTP status codes and returns error details in this format:
+    
+    ```json
+    {
+      "error": {
+        "message": "Error description",
+        "code": "ERROR_CODE",
+        "timestamp": "2025-01-14T10:30:00Z",
+        "requestId": "req-123456"
+      }
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: UN OICT Support
+    email: support@un.org
+    url: https://www.un.org/ict
+  license:
+    name: UN License
+    url: https://www.un.org/en/about-us/terms-of-use
+servers:
+  - url: https://api.unreviewhub.un.org/v1
+    description: Production server
+  - url: https://staging-api.unreviewhub.un.org/v1
+    description: Staging server
+  - url: http://localhost:3000/v1
+    description: Development server
+security:
+  - BearerAuth: []
+
+# Security Schemes
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from UN SSO authentication.
+        
+        Include the token in the Authorization header:
+        ```
+        Authorization: Bearer <your-jwt-token>
+        ```
+
+# Schemas
+  schemas:
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        name:
+          type: string
+          example: "United Nations High Commissioner for Refugees"
+        shortName:
+          type: string
+          example: "UNHCR"
+        countryCode:
+          type: string
+          pattern: '^[A-Z]{2}$'
+          example: "CH"
+        agencyType:
+          type: string
+          enum: ["UNHCR", "UNICEF", "WFP", "WHO", "UNDP", "OTHER"]
+          example: "UNHCR"
+        dataResidencyRules:
+          type: object
+          description: Configuration for data residency requirements
+        retentionPolicy:
+          type: object
+          description: Data retention policies
+        securityConfig:
+          type: object
+          description: Organization-specific security configuration
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - shortName
+        - countryCode
+        - agencyType
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        unSsoId:
+          type: string
+          description: Unique identifier from UN SSO system
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: ["admin", "reviewer", "qa", "data_scientist", "system_operator"]
+        skills:
+          type: array
+          items:
+            type: string
+          example: ["content_moderation", "multilingual", "child_protection"]
+        languages:
+          type: array
+          items:
+            type: string
+          example: ["en", "fr", "ar"]
+        preferences:
+          type: object
+        isActive:
+          type: boolean
+        lastLoginAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - unSsoId
+        - email
+        - displayName
+        - role
+
+    ReviewItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        externalId:
+          type: string
+          description: External identifier from source system
+        contentType:
+          type: string
+          enum: ["document", "image", "text", "audio", "video", "mixed"]
+        title:
+          type: string
+        content:
+          type: object
+          description: Structured content of the review item
+        metadata:
+          type: object
+        priority:
+          type: string
+          enum: ["low", "medium", "high", "critical", "urgent"]
+          default: "medium"
+        requiredSkills:
+          type: array
+          items:
+            type: string
+        requiredLanguages:
+          type: array
+          items:
+            type: string
+        estimatedDurationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 480
+        slaDeadline:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: ["pending", "assigned", "in_review", "completed", "escalated", "archived"]
+          default: "pending"
+        assignedTo:
+          type: string
+          format: uuid
+        assignedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - contentType
+        - content
+
+    Decision:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        reviewItemId:
+          type: string
+          format: uuid
+        reviewerId:
+          type: string
+          format: uuid
+        decisionType:
+          type: string
+          enum: ["approve", "reject", "escalate", "request_info", "skip"]
+        rationale:
+          type: string
+          minLength: 10
+        confidenceScore:
+          type: integer
+          minimum: 1
+          maximum: 5
+        piiRedactions:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                example: "email"
+              position:
+                type: object
+                properties:
+                  start:
+                    type: integer
+                  end:
+                    type: integer
+              originalText:
+                type: string
+              replacement:
+                type: string
+        tags:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+        reviewDurationSeconds:
+          type: integer
+          minimum: 1
+        isLatest:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - reviewItemId
+        - reviewerId
+        - decisionType
+        - rationale
+
+    QAReview:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        originalDecisionId:
+          type: string
+          format: uuid
+        qaReviewerId:
+          type: string
+          format: uuid
+        reviewItemId:
+          type: string
+          format: uuid
+        agreementScore:
+          type: integer
+          minimum: 1
+          maximum: 5
+        feedback:
+          type: string
+        discrepancyReason:
+          type: string
+        recommendedAction:
+          type: string
+        status:
+          type: string
+          enum: ["pending", "in_review", "completed", "disagreement", "escalated"]
+        reviewDurationSeconds:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - originalDecisionId
+        - qaReviewerId
+        - reviewItemId
+        - status
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            code:
+              type: string
+            timestamp:
+              type: string
+              format: date-time
+            requestId:
+              type: string
+          required:
+            - message
+            - code
+            - timestamp
+
+    PaginatedResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+              minimum: 1
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            total:
+              type: integer
+              minimum: 0
+            totalPages:
+              type: integer
+              minimum: 0
+            hasNext:
+              type: boolean
+            hasPrev:
+              type: boolean
+
+# API Paths
+paths:
+  # Health Check
+  /health:
+    get:
+      summary: Health Check
+      description: Check if the API and database are healthy
+      tags: ["system"]
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  database:
+                    type: string
+                    example: "connected"
+
+  # Authentication
+  /auth/login:
+    post:
+      summary: Login with UN SSO
+      description: Authenticate using UN SSO and receive JWT token
+      tags: ["auth"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ssoToken:
+                  type: string
+                  description: SSO token from UN identity provider
+                redirectUri:
+                  type: string
+                  format: uri
+              required:
+                - ssoToken
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT access token
+                  expiresIn:
+                    type: integer
+                    description: Token expiration time in seconds
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Organizations
+  /organizations:
+    get:
+      summary: List Organizations
+      description: Retrieve list of organizations the user has access to
+      tags: ["organizations"]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Organizations retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+
+  # Review Items
+  /reviews:
+    get:
+      summary: List Review Items
+      description: Retrieve review items with filtering and pagination
+      tags: ["reviews"]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: ["pending", "assigned", "in_review", "completed", "escalated"]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: ["low", "medium", "high", "critical", "urgent"]
+        - name: assignedTo
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: createdAfter
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: createdBefore
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: search
+          in: query
+          schema:
+            type: string
+            description: Full-text search query
+      responses:
+        '200':
+          description: Review items retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+
+    post:
+      summary: Create Review Item
+      description: Create a new review item
+      tags: ["reviews"]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                externalId:
+                  type: string
+                contentType:
+                  type: string
+                  enum: ["document", "image", "text", "audio", "video", "mixed"]
+                title:
+                  type: string
+                content:
+                  type: object
+                metadata:
+                  type: object
+                priority:
+                  type: string
+                  enum: ["low", "medium", "high", "critical", "urgent"]
+                  default: "medium"
+                requiredSkills:
+                  type: array
+                  items:
+                    type: string
+                requiredLanguages:
+                  type: array
+                  items:
+                    type: string
+                estimatedDurationMinutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 480
+                slaDeadline:
+                  type: string
+                  format: date-time
+              required:
+                - contentType
+                - content
+      responses:
+        '201':
+          description: Review item created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewItem'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /reviews/{id}:
+    get:
+      summary: Get Review Item
+      description: Retrieve a specific review item by ID
+      tags: ["reviews"]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Review item retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewItem'
+        '404':
+          description: Review item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Decisions
+  /reviews/{id}/decisions:
+    get:
+      summary: Get Decisions for Review Item
+      description: Retrieve all decisions for a specific review item
+      tags: ["decisions"]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Decisions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Decision'
+
+    post:
+      summary: Submit Decision
+      description: Submit a decision for a review item
+      tags: ["decisions"]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decisionType:
+                  type: string
+                  enum: ["approve", "reject", "escalate", "request_info", "skip"]
+                rationale:
+                  type: string
+                  minLength: 10
+                confidenceScore:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                piiRedactions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      position:
+                        type: object
+                        properties:
+                          start:
+                            type: integer
+                          end:
+                            type: integer
+                      originalText:
+                        type: string
+                      replacement:
+                        type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                metadata:
+                  type: object
+              required:
+                - decisionType
+                - rationale
+      responses:
+        '201':
+          description: Decision submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Decision already exists for this item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # QA Reviews
+  /qa/reviews:
+    get:
+      summary: List QA Reviews
+      description: Retrieve list of QA reviews
+      tags: ["qa"]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: ["pending", "in_review", "completed", "disagreement", "escalated"]
+        - name: qaReviewerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: QA reviews retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+
+    post:
+      summary: Create QA Review
+      description: Create a new QA review for a decision
+      tags: ["qa"]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                originalDecisionId:
+                  type: string
+                  format: uuid
+                agreementScore:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                feedback:
+                  type: string
+                discrepancyReason:
+                  type: string
+                recommendedAction:
+                  type: string
+              required:
+                - originalDecisionId
+      responses:
+        '201':
+          description: QA review created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QAReview'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+# Tags
+tags:
+  - name: system
+    description: System health and status endpoints
+  - name: auth
+    description: Authentication and authorization
+  - name: organizations
+    description: Organization management
+  - name: reviews
+    description: Review item management
+  - name: decisions
+    description: Decision management
+  - name: qa
+    description: Quality assurance and reviews
